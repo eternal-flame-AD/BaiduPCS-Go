@@ -65,7 +65,7 @@
                 fa_class        :"fa-folder",
                 server_filename :"..",
                 size            :0,
-                ctime           :0
+                ctime           :""
             });
             dl.append(template);
             
@@ -79,6 +79,8 @@
                 } else {
                     ele.fa_class = "fa-file";
                 }
+
+                ele.ctime = new Date(ele.ctime*1000).toLocaleString();
 
                 var template = nano($("#list-template").val(), ele);
 
