@@ -39,7 +39,7 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/iikira/Baidu-Login"
+  name = "github.com/eternal-flame-AD/Baidu-Login"
   packages = [
     ".",
     "bdcrypto",
@@ -49,7 +49,7 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/iikira/args"
+  name = "github.com/eternal-flame-AD/args"
   packages = ["."]
   revision = "9c7ef813cfacd8912dde29967d9e4ffb45ae1495"
 

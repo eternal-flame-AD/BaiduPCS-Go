@@ -3,7 +3,7 @@ package baidupcs
 import (
 	"bytes"
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/requester/multipartreader"
 	"github.com/json-iterator/go"
 	"io"
 	"net/http"

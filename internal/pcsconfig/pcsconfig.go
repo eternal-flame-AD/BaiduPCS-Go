@@ -2,9 +2,9 @@
 package pcsconfig
 
 import (
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
-	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsverbose"
 	"github.com/json-iterator/go"
 	"os"
 	"path/filepath"

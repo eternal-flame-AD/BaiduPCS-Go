@@ -2,9 +2,9 @@
 package pcscommand
 
 import (
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
-	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsverbose"
 )
 
 var (

@@ -3,12 +3,13 @@ package tieba
 import (
 	"bytes"
 	"fmt"
-	"github.com/bitly/go-simplejson"
-	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/baidu-tools/tieba/tiebautil"
 	"log"
 	"regexp"
 	"strconv"
+
+	"github.com/bitly/go-simplejson"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
+	"github.com/iikira/baidu-tools/tieba/tiebautil"
 )
 
 // GetBars 获取贴吧列表

@@ -2,11 +2,11 @@ package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
-	"github.com/iikira/BaiduPCS-Go/pcspath"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
-	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcspath"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/waitgroup"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
 	fpath "path"
 	"regexp"
 	"strings"

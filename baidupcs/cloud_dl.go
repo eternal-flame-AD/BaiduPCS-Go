@@ -2,9 +2,9 @@ package baidupcs
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/pcstable"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/converter"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/pcstime"
 	"github.com/json-iterator/go"
 	"io"
 	"strconv"

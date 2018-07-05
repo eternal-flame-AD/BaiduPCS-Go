@@ -2,7 +2,7 @@ package downloader
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/converter"
 	"io"
 	"os"
 )

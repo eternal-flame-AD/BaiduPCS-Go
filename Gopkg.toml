@@ -35,11 +35,11 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/iikira/Baidu-Login"
+  name = "github.com/eternal-flame-AD/Baidu-Login"
 
 [[constraint]]
   branch = "master"
-  name = "github.com/iikira/args"
+  name = "github.com/eternal-flame-AD/args"
 
 [[constraint]]
   branch = "master"

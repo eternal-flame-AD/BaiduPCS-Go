@@ -2,8 +2,8 @@ package pcsconfig
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/pcstable"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
 	"github.com/olekukonko/tablewriter"
 	"os"
 	"strconv"

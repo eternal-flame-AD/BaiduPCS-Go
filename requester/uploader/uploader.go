@@ -2,8 +2,8 @@
 package uploader
 
 import (
-	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/BaiduPCS-Go/requester/rio"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/requester/rio"
 	"net/http"
 	"time"
 )

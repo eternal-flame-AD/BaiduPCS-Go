@@ -2,16 +2,17 @@ package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
-	"github.com/iikira/BaiduPCS-Go/pcstable"
-	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/baidu-tools/pan"
 	"net/url"
 	"os"
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
+	"github.com/iikira/baidu-tools/pan"
 )
 
 // RunShareSet 执行分享

@@ -2,7 +2,7 @@
 package pcscache
 
 import (
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
 	"time"
 )
 

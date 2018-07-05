@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/iikira/baidu-tools/randominfo"
 	"sort"
 	"strconv"
 	"strings"
 	"unsafe"
+
+	"github.com/iikira/baidu-tools/randominfo"
 )
 
 // TiebaClientSignature 根据给定贴吧客户端的post数据进行签名, 以通过百度服务器验证. 返回值为签名后的 post

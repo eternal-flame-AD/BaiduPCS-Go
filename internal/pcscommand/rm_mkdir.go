@@ -2,8 +2,8 @@ package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/pcspath"
-	"github.com/iikira/BaiduPCS-Go/pcstable"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcspath"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
 	"os"
 	"strconv"
 )

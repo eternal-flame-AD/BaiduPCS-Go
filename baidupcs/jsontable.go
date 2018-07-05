@@ -1,7 +1,7 @@
 package baidupcs
 
 import (
-	"github.com/iikira/BaiduPCS-Go/pcstable"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
 	"github.com/json-iterator/go"
 	"strconv"
 	"strings"

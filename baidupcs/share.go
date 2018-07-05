@@ -2,11 +2,12 @@ package baidupcs
 
 import (
 	"errors"
-	"github.com/iikira/baidu-tools/pan"
-	"github.com/json-iterator/go"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/iikira/baidu-tools/pan"
+	"github.com/json-iterator/go"
 )
 
 // ShareOption 分享可选项

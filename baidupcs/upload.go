@@ -2,7 +2,7 @@ package baidupcs
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/converter"
 	"github.com/json-iterator/go"
 	"net/http"
 	"net/http/cookiejar"

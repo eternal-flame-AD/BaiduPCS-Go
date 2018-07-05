@@ -2,10 +2,10 @@ package baidupcs
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/pcstable"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
-	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/converter"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/pcstime"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsverbose"
 	"github.com/json-iterator/go"
 	"github.com/olekukonko/tablewriter"
 	"strconv"

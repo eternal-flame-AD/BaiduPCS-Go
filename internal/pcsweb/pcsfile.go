@@ -6,9 +6,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/internal/pcscommand"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcscommand"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsconfig"
 )
 
 const (

@@ -2,7 +2,7 @@ package downloader
 
 import (
 	"errors"
-	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsverbose"
 	"github.com/json-iterator/go"
 	"os"
 	"sync"

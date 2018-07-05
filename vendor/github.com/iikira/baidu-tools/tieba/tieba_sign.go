@@ -2,13 +2,14 @@ package tieba
 
 import (
 	"fmt"
-	"github.com/bitly/go-simplejson"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
-	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/baidu-tools/tieba/tiebautil"
 	"strconv"
 	"time"
 	"unsafe"
+
+	"github.com/bitly/go-simplejson"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
+	"github.com/iikira/baidu-tools/tieba/tiebautil"
 )
 
 // TiebaSign 贴吧签到

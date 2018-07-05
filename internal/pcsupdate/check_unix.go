@@ -3,7 +3,7 @@
 package pcsupdate
 
 import (
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil"
 	"syscall"
 )
 

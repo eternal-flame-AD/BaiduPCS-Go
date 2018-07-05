@@ -2,7 +2,7 @@
 package getip
 
 import (
-	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
 	"unsafe"
 )
 
