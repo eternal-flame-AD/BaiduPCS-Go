@@ -17,7 +17,12 @@ func activeAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	// TODO web登录
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		next2.ServeHTTP(w, r)
+		if checkAuth(r) {
+			next2.ServeHTTP(w, r)
+		} else {
+			w.Header().Set("Location", "/login.html")
+			http.Error(w, "", 302)
+		}
 	}
 }
 

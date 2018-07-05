@@ -2,11 +2,12 @@ package pcsconfig
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+
 	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
 	"github.com/olekukonko/tablewriter"
-	"os"
-	"strconv"
 )
 
 // pcsConfigJSONExport 导出配置详情, 用于生成json数据
@@ -23,6 +24,8 @@ type pcsConfigJSONExport struct {
 	UserAgent   string `json:"user_agent"`   // 浏览器标识
 	SaveDir     string `json:"savedir"`      // 下载储存路径
 	EnableHTTPS bool   `json:"enable_https"` // 启用https
+	WebUsername string `json:"web_user"`     // web用户名
+	WebPassword string `json:"web_pass"`     // web密码
 }
 
 // ActiveUser 获取当前登录的用户
@@ -104,6 +107,7 @@ func (c *PCSConfig) PrintTable() {
 		[]string{"max_parallel", strconv.Itoa(c.maxParallel), "50 ~ 500", "下载最大并发量"},
 		[]string{"max_download_load", strconv.Itoa(c.maxDownloadLoad), "1 ~ 5", "同时进行下载文件的最大数量"},
 		[]string{"savedir", c.saveDir, "", "下载文件的储存目录"},
+		[]string{"webuser", c.webUsername, "", "web用户名"},
 	})
 	tb.Render()
 }

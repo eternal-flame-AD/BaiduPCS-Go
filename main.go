@@ -1504,6 +1504,12 @@ func main() {
 						if c.IsSet("savedir") {
 							pcsconfig.Config.SetSaveDir(c.String("savedir"))
 						}
+						if c.IsSet("webuser") {
+							pcsconfig.Config.SetWebUsername(c.String("webuser"))
+						}
+						if c.IsSet("webpassword") {
+							pcsconfig.Config.SetWebPassword(c.String("webpassword"))
+						}
 
 						err := pcsconfig.Config.Save()
 						if err != nil {
@@ -1544,6 +1550,14 @@ func main() {
 						cli.StringFlag{
 							Name:  "savedir",
 							Usage: "下载文件的储存目录",
+						},
+						cli.StringFlag{
+							Name:  "webuser",
+							Usage: "web服务用户名",
+						},
+						cli.StringFlag{
+							Name:  "webpassword",
+							Usage: "web服务密码",
 						},
 					},
 				},

@@ -41,9 +41,11 @@ func StartServer(listen string, port uint) error {
 	http.HandleFunc("/", rootMiddleware)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(staticBox.HTTPBox())))
 	http.HandleFunc("/about.html", middleware(aboutPage))
+	http.HandleFunc("/login.html", middleware(loginPage))
 	http.HandleFunc("/index.html", activeAuthMiddleware(indexPage))
 	http.HandleFunc("/tasks.html", activeAuthMiddleware(tasksPage))
 
+	http.HandleFunc("/cgi-bin/baidu/pcs/login", middleware(loginAPI))
 	http.HandleFunc("/cgi-bin/baidu/pcs/file/list", activeAuthMiddleware(fileList))
 	http.HandleFunc("/cgi-bin/baidu/pcs/file/download", activeAuthMiddleware(downloadProcess))
 	http.HandleFunc("/cgi-bin/baidu/pcs/user/info", activeAuthMiddleware(userInfo))

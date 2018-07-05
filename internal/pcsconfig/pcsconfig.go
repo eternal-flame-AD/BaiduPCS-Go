@@ -2,15 +2,16 @@
 package pcsconfig
 
 import (
-	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsverbose"
-	"github.com/json-iterator/go"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"unsafe"
+
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsverbose"
+	"github.com/json-iterator/go"
 )
 
 const (
@@ -39,6 +40,8 @@ type PCSConfig struct {
 	userAgent       string // 浏览器标识
 	saveDir         string // 下载储存路径
 	enableHTTPS     bool   // 启用https
+	webUsername     string // web用户名
+	webPassword     string // web密码
 
 	configFilePath string
 	configFile     *os.File

@@ -174,3 +174,23 @@ func (c *PCSConfig) SetEnableHTTPS(https bool) {
 		c.pcs.SetHTTPS(https)
 	}
 }
+
+// SetWebUsername 设置web用户名
+func (c *PCSConfig) SetWebUsername(s string) {
+	c.webUsername = s
+}
+
+// GetWebUsername 获得web用户名
+func (c *PCSConfig) GetWebUsername() string {
+	return c.webUsername
+}
+
+// SetWebPassword 设置web密码
+func (c *PCSConfig) SetWebPassword(s string) {
+	c.webPassword = s
+}
+
+// GetWebPassword 获得web密码
+func (c *PCSConfig) GetWebPassword() string {
+	return c.webPassword
+}

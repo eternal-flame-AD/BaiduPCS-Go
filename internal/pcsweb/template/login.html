@@ -1,0 +1,87 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<!--
+    Bootstrap 3.1.0 Snippet by calvinko
+    https://bootsnipp.com/snippets/featured/login-amp-signup-forms-in-panel
+-->
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge"></meta>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ff9575" />
+
+    <title>Login - BaiduPCS-Go</title>
+
+    <link rel="shortcut icon" href="static/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="static/css/bootstrap-3.3.7.min.css">
+    <link rel="stylesheet" href="static/css/font-awesome-4.7.0.min.css">
+    <link rel="stylesheet" href="static/css/main.css">
+    <script src="static/js/md5.min.js"></script>
+    <script src="static/js/sign.js"></script>
+    <script src="static/js/jquery-3.2.1.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div id="loginbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <div class="panel-title">Login</div>
+                </div>
+
+                <div style="padding-top:30px" class="panel-body">
+
+                    <div style="display:none" id="login-alert" class="alert alert-danger col-sm-12"></div>
+
+                    <form id="loginform" class="form-horizontal" role="form">
+
+                        <div style="margin-bottom: 25px" class="input-group">
+                            <span class="input-group-addon">
+                                <i class="fa fa-user"></i>
+                            </span>
+                            <input id="login-username" type="text" class="form-control" name="username" value="" placeholder="username or email">
+                        </div>
+
+                        <div style="margin-bottom: 25px" class="input-group">
+                            <span class="input-group-addon">
+                                <i class="fa fa-key"></i>
+                            </span>
+                            <input id="login-password" type="password" class="form-control" name="password" placeholder="password">
+                        </div>
+
+
+                        <div style="margin-top:10px" class="form-group">
+                            <div class="col-sm-12 controls">
+                                <input type="button" id="btn-login" onclick="_login();" class="btn btn-success" value="Login" />
+                            </div>
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+
+        function _login() {
+            var username = $("#login-username").val();
+            var password = $("#login-password").val();
+            var nonce = makeNonce();
+            var sign = md5(username+":"+password+":"+nonce)
+            var uri = "/cgi-bin/baidu/pcs/login?nonce=" + nonce + "&sign=" + sign;
+            $.post(
+                uri,
+                function(res) {
+                    if (res.error_code===0) {
+                        document.cookie="token="+res.token;
+                        window.location="/";
+                    } else {
+                        showError();
+                    }
+                },
+                "JSON"
+            ).fail((res)=>showError());
+        }
+        function showError() {
+            $("#loginform").addClass("has-error");
+        }
+    </script>
+</body>

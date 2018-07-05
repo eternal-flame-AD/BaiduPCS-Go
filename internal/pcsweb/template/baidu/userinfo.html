@@ -56,13 +56,15 @@
 {{end}}{{define "contents_js"}}
 <script src="static/js/nano.js"></script>
 <script>
-    var formParam = $("#path-content").serialize();
+    var pathReq = $("#path-content").serialize();
+    var uri = "/cgi-bin/baidu/pcs/file/list?" +pathReq;
+    uri +="&nonce=" +makeNonce();
+    uri +="&sign="  +getSign(uri);
 
     // 获取目录下的文件和目录列表
     $.ajax({
         type: "GET",
-        url: "/cgi-bin/baidu/pcs/file/list",
-        data: formParam,
+        url: uri,
         dataType: "json",
         success: function (result) {
             var dl = $("#directory-listing");
@@ -83,10 +85,13 @@
             };
         },
     });
+
+    uri = "/cgi-bin/baidu/pcs/config/saveto?" +pathReq;
+    uri +="&nonce=" +makeNonce();
+    uri +="&sign="  +getSign(uri);
     $.ajax({
         type: "GET",
-        url: "/cgi-bin/baidu/pcs/config/saveto",
-        data: formParam,
+        url: uri,
         dataType: "json",
         success: function (result) {
             var dl = $("input#save-to");
@@ -95,10 +100,13 @@
     });
 
     // 获取用户信息
+
+    uri = "/cgi-bin/baidu/pcs/user/info?" +pathReq;
+    uri +="&nonce=" +makeNonce();
+    uri +="&sign="  +getSign(uri);
     $.ajax({
         type: "GET",
-        url: "/cgi-bin/baidu/pcs/user/info",
-        data: formParam,
+        url: uri,
         dataType: "json",
         success: function (result) {
             var ui = $("#userinfo");
@@ -120,6 +128,8 @@
     });
     function dispatchDownload(path) {
             var uri = "/cgi-bin/baidu/pcs/file/download?path=" + path;
+            uri +="&nonce=" +makeNonce();
+            uri +="&sign="  +getSign(uri);
             $.post(
                 uri,
                 function(res) {
@@ -136,6 +146,8 @@
     }
     function updateSaveDir() {
         var uri = "/cgi-bin/baidu/pcs/config/saveto?path=" + escape($("input#save-to").val());
+        uri +="&nonce=" +makeNonce();
+        uri +="&sign="  +getSign(uri);
         $.post(
             uri,
             function(res) {
