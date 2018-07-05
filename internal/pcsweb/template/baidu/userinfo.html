@@ -68,6 +68,15 @@
         dataType: "json",
         success: function (result) {
             var dl = $("#directory-listing");
+            var template = nano($("#list-template").val(), {
+                encoded_url_path: escape("{{.}}".substring(0, "{{.}}".lastIndexOf("/"))),
+                isdir           : true,
+                fa_class        : "fa-folder",
+                server_filename :"..",
+                size            :0,
+                ctime           :0
+            });
+            dl.append(template);
             for (k in result.list) {
                 var ele = result.list[k];
 
