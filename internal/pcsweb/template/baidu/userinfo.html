@@ -4,7 +4,7 @@
         <div class="panel-heading">
             <span>用户信息</span>
         </div>
-        <div class="panel-body">
+        <div class="panel-body" id="userinfo">
 
         </div>
     </div>
@@ -14,26 +14,34 @@
             <span class="input-group-addon">当前路径</span>
             <input class="form-control" name="path" id="path-content" value='{{.}}' />
         </div>
+        <div class="input-group" id="save-to">
+                <span class="input-group-addon">保存位置</span>
+                <input class="form-control" name="saveto" value="" id="save-to" onblur="updateSaveDir();"/>
+        </div>
     </div>
 
     <div class="directory-list-header">
         <div class="row">
-            <div class="col-md-7 col-sm-6 col-xs-10">文件</div>
+            <div class="col-md-5 col-sm-4 col-xs-6">文件</div>
+            <div class="col-md-2 col-sm-2 col-xs-3 text-right">操作</div>
             <div class="col-md-2 col-sm-2 col-xs-2 text-right">大小</div>
-            <div class="col-md-3 col-sm-4 hidden-xs text-right">创建时间</div>
+            <div class="col-md-3 col-sm-2 hidden-xs text-right">创建时间</div>
         </div>
     </div>
 
     <textarea id="list-template" style="display:none;">
         <li data-name="{server_filename}" data-href="?path={encoded_url_path}">
-            <a href="?path={encoded_url_path}" class="clearfix" data-name="{server_filename}">
+            <a class="clearfix" data-name="{server_filename}">
                 <div class="row">
-                    <span class="file-name col-md-7 col-sm-6 col-xs-9">
+                    <span class="file-name col-md-5 col-sm-4 col-xs-6" onclick="self.location='?path={encoded_url_path}';" style="cursor: pointer;">
                         <i class="fa {fa_class} fa-fw"></i>
                         {server_filename} </span>
+                    <span class="col-md-2 col-sm-2 col-xs-3 text-right">
+                        <i class="fa fa-fw fa-arrow-down" onclick="dispatchDownload('{encoded_url_path}');" style="cursor: pointer;" id="download-mark" data-path="{encoded_url_path}"></i>
+                    </span>
                     <span class="file-size col-md-2 col-sm-2 col-xs-3 text-right">
                         {size} </span>
-                    <span class="col-md-3 col-sm-4 hidden-xs text-right">
+                    <span class="col-md-3 col-sm-2 hidden-xs text-right">
                         {ctime} </span>
                 </div>
             </a>
@@ -75,5 +83,75 @@
             };
         },
     });
+    $.ajax({
+        type: "GET",
+        url: "/cgi-bin/baidu/pcs/config/saveto",
+        data: formParam,
+        dataType: "json",
+        success: function (result) {
+            var dl = $("input#save-to");
+            dl.attr("value", result)
+        },
+    });
+
+    // 获取用户信息
+    $.ajax({
+        type: "GET",
+        url: "/cgi-bin/baidu/pcs/user/info",
+        data: formParam,
+        dataType: "json",
+        success: function (result) {
+            var ui = $("#userinfo");
+
+            var infoitems = {
+                "uid": "UID",
+                "name":"用户名",
+                "sex": "性别",
+                "age": "年龄"
+            }
+
+            for (var key of Object.keys(infoitems)) {
+                var infoitem = $("<p></p>");
+                infoitem.text(infoitems[key] + ": " + result[key]);
+                ui.append(infoitem);
+            }
+            
+        },
+    });
+    function dispatchDownload(path) {
+            var uri = "/cgi-bin/baidu/pcs/file/download?path=" + path;
+            $.post(
+                uri,
+                function(res) {
+                    if (res.error_code===0) {
+                        $("[data-path='"+path+"']").attr("class", "fa fa-fw fa-check");
+                    } else{
+                        $("[data-path='"+path+"']").attr("class", "fa fa-fw fa-times").text(res.error_msg);
+                    }
+                },
+                "JSON"
+            ).fail(function(res) {
+                $("[data-path='"+path+"']").attr("class", "fa fa-fw fa-times").text(res.error_msg);
+            });
+    }
+    function updateSaveDir() {
+        var uri = "/cgi-bin/baidu/pcs/config/saveto?path=" + escape($("input#save-to").val());
+        $.post(
+            uri,
+            function(res) {
+                if (res.error_code===0) {
+                    $("div#save-to").removeClass("has-error");
+                    $("div#save-to").addClass("has-success");
+                } else {
+                    $("div#save-to").removeClass("has-success");
+                    $("div#save-to").addClass("has-error");
+                }
+            },
+            "JSON"
+        ).fail(function(res) {
+            $("div#save-to").removeClass("has-success");
+            $("div#save-to").addClass("has-error");
+        });
+    }
 
 </script> {{end}}

@@ -1,0 +1,52 @@
+{{define "contents"}}
+<div class="container-fluid">
+
+    <div class="directory-list-header">
+        <div class="row">
+            <div class="col-md-2 col-sm-2 col-xs-2">任务ID</div>
+            <div class="col-md-5 col-sm-4 col-xs-6">文件</div>
+            <div class="col-md-2 col-sm-2 col-xs-3 text-right">状态</div>
+        </div>
+    </div>
+
+    <textarea id="list-template" style="display:none;">
+        <li data-name="{server_filename}" data-href="?path={encoded_url_path}">
+            <a class="clearfix" data-name="{server_filename}">
+                <div class="row">
+                    <span class="col-md-2 col-sm-2 col-xs-2">
+                        {ID} </span>
+                    <span class="col-md-5 col-sm-4 col-xs-6">
+                        {Path} </span>
+                    <span class="col-md-2 col-sm-2 col-xs-3 text-right">
+                        {Status} </span>
+                </div>
+            </a>
+        </li>
+    </textarea>
+
+    <ul id="task-listing" class="nav nav-pills nav-stacked">
+
+    </ul>
+</div>
+{{end}}
+{{define "contents_js"}}
+<script src="static/js/nano.js"></script>
+<script>
+    $.ajax({
+        type: "GET",
+        url: "/cgi-bin/baidu/pcs/file/download",
+        dataType: "json",
+        success: function (result) {
+            var dl = $("#task-listing");
+            for (ele of result) {
+                switch (ele.Status){
+                    case 0: ele.Status="Ongoing"; break;
+                    case 1: ele.Status="Success"; break;
+                    case 2: ele.Status="Failure"; break;
+                }
+                var template = nano($("#list-template").val(), ele);
+                dl.append(template);
+            };
+        },
+    });
+</script> {{end}}

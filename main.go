@@ -3,6 +3,16 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcscommand"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
@@ -22,15 +32,6 @@ import (
 	"github.com/iikira/args"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
-	"os"
-	"os/exec"
-	"path"
-	"path/filepath"
-	"runtime"
-	"sort"
-	"strconv"
-	"strings"
-	"time"
 )
 
 var (
@@ -326,8 +327,8 @@ func main() {
 			Category: "其他",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
-				fmt.Printf("web 客户端功能为实验性功能, 测试中, 打开 http://localhost:%d 查看效果\n", c.Uint("port"))
-				fmt.Println(pcsweb.StartServer(c.Uint("port")))
+				fmt.Printf("web 客户端功能为实验性功能, 测试中, 打开 http://%s:%d 查看效果\n", c.String("listen"), c.Uint("port"))
+				fmt.Println(pcsweb.StartServer(c.String("listen"), c.Uint("port")))
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -335,6 +336,11 @@ func main() {
 					Name:  "port",
 					Usage: "自定义端口",
 					Value: 8080,
+				},
+				cli.StringFlag{
+					Name:  "listen",
+					Usage: "监听地址",
+					Value: "",
 				},
 			},
 		},
