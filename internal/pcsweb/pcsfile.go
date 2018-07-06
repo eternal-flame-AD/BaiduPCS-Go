@@ -27,9 +27,9 @@ var (
 			IsShareDownload:      false,
 			IsLocateDownload:     true,
 			IsStreaming:          false,
-			SaveTo:               ".",
-			Parallel:             100,
-			Load:                 1,
+			SaveTo:               pcsconfig.Config.SaveDir(),
+			Parallel:             pcsconfig.Config.MaxParallel(),
+			Load:                 pcsconfig.Config.MaxDownloadLoad(),
 		},
 		tasks: make([]*downloadTask, 0),
 	}

@@ -66,7 +66,7 @@ func loginAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m5 := md5.New()
-	m5.Write([]byte(pcsconfig.Config.GetWebUsername() + ":" + pcsconfig.Config.GetWebPassword() + ":" + nonce))
+	m5.Write([]byte(pcsconfig.Config.WebUsername() + ":" + pcsconfig.Config.WebPassword() + ":" + nonce))
 	if sign == hex.EncodeToString(m5.Sum(nil)) {
 		w.Write([]byte("{\"error_code\":0,\"token\":\"" + issueToken() + "\"}"))
 		return

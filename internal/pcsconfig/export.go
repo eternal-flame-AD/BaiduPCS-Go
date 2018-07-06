@@ -94,6 +94,16 @@ func (c *PCSConfig) AverageParallel() int {
 	return AverageParallel(c.maxParallel, c.maxDownloadLoad)
 }
 
+// WebUsername 获得web用户名
+func (c *PCSConfig) WebUsername() string {
+	return c.webUsername
+}
+
+// WebPassword 获得web密码
+func (c *PCSConfig) WebPassword() string {
+	return c.webPassword
+}
+
 // PrintTable 输出表格
 func (c *PCSConfig) PrintTable() {
 	tb := pcstable.NewTable(os.Stdout)
