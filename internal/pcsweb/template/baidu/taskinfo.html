@@ -17,7 +17,7 @@
                         {ID} </span>
                     <span class="col-md-5 col-sm-4 col-xs-6">
                         {Path} </span>
-                    <span class="col-md-2 col-sm-2 col-xs-3 text-right">
+                    <span class="col-md-2 col-sm-2 col-xs-3 text-right {Status_class}">
                         {Status} </span>
                 </div>
             </a>
@@ -40,9 +40,9 @@
             var dl = $("#task-listing");
             for (ele of result) {
                 switch (ele.Status){
-                    case 0: ele.Status="Ongoing"; break;
-                    case 1: ele.Status="Success"; break;
-                    case 2: ele.Status="Failure"; break;
+                    case 0: ele.Status="Ongoing"; ele.Status_class="text-primary"; break;
+                    case 1: ele.Status="Success"; ele.Status_class="text-success"; break;
+                    case 2: ele.Status="Failure"; ele.Status_class="text-danger"; break;
                 }
                 var template = nano($("#list-template").val(), ele);
                 dl.append(template);
