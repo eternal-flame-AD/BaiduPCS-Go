@@ -16,14 +16,15 @@ import (
 	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcscommand"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsconfig"
+	_ "github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsinit"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsupdate"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsweb"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcscache"
-	_ "github.com/eternal-flame-AD/BaiduPCS-Go/pcsinit"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsliner"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcspath"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/checksum"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/converter"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/getip"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/pcstime"
@@ -31,6 +32,7 @@ import (
 	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
 	"github.com/iikira/args"
 	"github.com/olekukonko/tablewriter"
+	"github.com/peterh/liner"
 	"github.com/urfave/cli"
 )
 
@@ -93,6 +95,7 @@ func init() {
 func main() {
 	defer pcsconfig.Config.Close()
 
+	line := pcsliner.NewLiner()
 	app := cli.NewApp()
 	app.Name = "BaiduPCS-Go"
 	app.Version = Version
@@ -133,8 +136,7 @@ func main() {
 		pcsverbose.Verbosef("VERBOSE: 这是一条调试信息\n\n")
 
 		var (
-			err  error
-			line = pcsliner.NewLiner()
+			err error
 		)
 
 		line.History, err = pcsliner.NewLineHistory(historyFilePath)
@@ -287,7 +289,7 @@ func main() {
 
 			if activeUser.Name != "" {
 				// 格式: BaiduPCS-Go:<工作目录> <百度ID>$
-				// 工作目录太长的话会自动缩略
+				// 工作目录太长时, 会自动缩略
 				prompt = app.Name + ":" + converter.ShortDisplay(path.Base(activeUser.Workdir), 20) + " " + activeUser.Name + "$ "
 			} else {
 				// BaiduPCS-Go >
@@ -295,7 +297,12 @@ func main() {
 			}
 
 			commandLine, err := line.State.Prompt(prompt)
-			if err != nil {
+			switch err {
+			case liner.ErrPromptAborted:
+				return
+			case nil:
+				// continue
+			default:
 				fmt.Println(err)
 				return
 			}
@@ -313,9 +320,7 @@ func main() {
 			// 恢复原始终端状态
 			// 防止运行命令时程序被结束, 终端出现异常
 			line.Pause()
-
 			c.App.Run(s)
-
 			line.Resume()
 		}
 	}
@@ -1053,6 +1058,8 @@ func main() {
 	遇到同名文件将会自动覆盖!!
 	当上传的文件名和网盘的目录名称相同时, 不会覆盖目录, 防止丢失数据.
 
+	注意: 在上传完成后的修复md5, 不一定能成功, 但文件本身是没问题的, 只是服务器记录的md5错误而已.
+
 	示例:
 
 	1. 将本地的 C:\Users\Administrator\Desktop\1.mp4 上传到网盘 /视频 目录
@@ -1078,8 +1085,21 @@ func main() {
 
 				subArgs := c.Args()
 
-				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1])
+				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1], &pcscommand.UploadOptions{
+					NotRapidUpload: c.Bool("norapid"),
+					NoFixMD5:       c.Bool("nofix"),
+				})
 				return nil
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "norapid",
+					Usage: "不检测秒传",
+				},
+				cli.BoolFlag{
+					Name:  "nofix",
+					Usage: "在上传完成后不修复md5, 不一定能成功",
+				},
 			},
 		},
 		{
@@ -1087,8 +1107,14 @@ func main() {
 			Aliases:   []string{"lt"},
 			Usage:     "获取下载直链",
 			UsageText: fmt.Sprintf("%s locate <文件1> <文件2> ...", app.Name),
-			Category:  "百度网盘",
-			Before:    reloadFn,
+			Description: `
+	获取下载直链
+
+	若该功能无法正常使用, 提示"user is not authorized, hitcode:101", 尝试更换 User-Agent 为 netdisk:
+	BaiduPCS-Go config set -user_agent "netdisk"
+`,
+			Category: "百度网盘",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() < 1 {
 					cli.ShowCommandHelp(c, c.Command.Name)
@@ -1202,7 +1228,7 @@ func main() {
 				}
 
 				for k, filePath := range c.Args() {
-					lp, err := pcscommand.GetFileSum(filePath, &pcscommand.SumConfig{
+					lp, err := checksum.GetFileSum(filePath, &checksum.SumConfig{
 						IsMD5Sum:      true,
 						IsCRC32Sum:    true,
 						IsSliceMD5Sum: true,
@@ -1679,6 +1705,18 @@ func main() {
 						},
 					},
 				},
+			},
+		},
+		{
+			Name:        "clear",
+			Aliases:     []string{"cls"},
+			Usage:       "清空控制台",
+			UsageText:   app.Name + " clear",
+			Description: "清空控制台屏幕",
+			Category:    "其他",
+			Action: func(c *cli.Context) error {
+				line.ClearScreen()
+				return nil
 			},
 		},
 		{

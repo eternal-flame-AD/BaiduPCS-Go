@@ -2,14 +2,13 @@ package pcscommand
 
 import (
 	"fmt"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsconfig"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcspath"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/waitgroup"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
 	fpath "path"
 	"regexp"
 	"strings"
+
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcspath"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/waitgroup"
 )
 
 var (
@@ -22,11 +21,6 @@ type ListTask struct {
 	ID       int // 任务id
 	MaxRetry int // 最大重试次数
 	retry    int // 任务失败的重试次数
-}
-
-func setupHTTPClient(client *requester.HTTPClient) {
-	client.SetUserAgent(pcsconfig.Config.UserAgent())
-	client.SetHTTPSecure(pcsconfig.Config.EnableHTTPS())
 }
 
 // getAllAbsPaths 获取所有绝对路径

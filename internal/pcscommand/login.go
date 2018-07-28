@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"image/png"
 	"io/ioutil"
-	"path/filepath"
 
-	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsfunctions/pcscaptcha"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsliner"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
 	"github.com/iikira/Baidu-Login"
@@ -25,7 +24,7 @@ func handleVerifyImg(imgURL string) (savePath string, err error) {
 		return "", fmt.Errorf("验证码解析错误: %s", err)
 	}
 
-	savePath = filepath.Join(pcsconfig.GetConfigDir(), "captcha.png")
+	savePath = pcscaptcha.CaptchaPath()
 
 	return savePath, ioutil.WriteFile(savePath, imgContents, 0777)
 }
@@ -54,6 +53,11 @@ func RunLogin(username, password string) (bduss, ptoken, stoken string, err erro
 	}
 
 	var vcode, vcodestr string
+	// 移除验证码文件
+	defer func() {
+		pcscaptcha.RemoveCaptchaPath()
+		pcscaptcha.RemoveOldCaptchaPath()
+	}()
 
 for_1:
 	for i := 0; i < 10; i++ {

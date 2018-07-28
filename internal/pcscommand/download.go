@@ -60,9 +60,8 @@ func downloadPrintFormat(load int) string {
 	return "[%d] ↓ %s/%s %s/s in %s, left %s ...\n"
 }
 
-func download(id int, downloadURL, savePath string, loadBalansers []string, client *requester.HTTPClient, cfg *downloader.Config, downloadOptions *DownloadOptions) error {
+func download(id int, downloadURL, savePath string, loadBalansers []string, client *requester.HTTPClient, newCfg downloader.Config, downloadOptions *DownloadOptions) error {
 	var (
-		newCfg   = cfg.Copy()
 		file     *os.File
 		writerAt io.WriterAt
 		err      error
@@ -98,7 +97,7 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 		}
 	}
 
-	download := downloader.NewDownloader(downloadURL, writerAt, cfg)
+	download := downloader.NewDownloader(downloadURL, writerAt, &newCfg)
 	download.SetClient(client)
 	download.TryHTTP(!pcsconfig.Config.EnableHTTPS())
 	download.AddLoadBalanceServer(loadBalansers...)
@@ -292,10 +291,6 @@ func RunDownload(paths []string, options *DownloadOptions) {
 		}
 
 		task := e.(*dtask)
-		if task == nil {
-			continue
-		}
-
 		wg.AddDelta()
 		go func() {
 			defer wg.Done()
@@ -386,7 +381,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 
 			if dlink != "" {
 				pcsCommandVerbose.Infof("[%d] 获取到下载链接: %s\n", task.ID, dlink)
-				client := requester.NewHTTPClient()
+				client := pcsconfig.Config.HTTPClient()
 				client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 					// 去掉 Referer
 					if !pcsconfig.Config.EnableHTTPS() {
@@ -399,17 +394,15 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				}
 				client.SetTimeout(20 * time.Minute)
 				client.SetKeepAlive(true)
-				setupHTTPClient(client)
-				err = download(task.ID, dlink, task.savePath, dlinks, client, cfg, options)
+				err = download(task.ID, dlink, task.savePath, dlinks, client, *cfg, options)
 			} else {
 				dfunc := func(downloadURL string, jar *cookiejar.Jar) error {
-					h := requester.NewHTTPClient()
+					h := pcsconfig.Config.HTTPClient()
 					h.SetCookiejar(jar)
 					h.SetKeepAlive(true)
 					h.SetTimeout(10 * time.Minute)
-					setupHTTPClient(h)
 
-					err := download(task.ID, downloadURL, task.savePath, dlinks, h, cfg, options)
+					err := download(task.ID, downloadURL, task.savePath, dlinks, h, *cfg, options)
 					if err != nil {
 						return err
 					}
