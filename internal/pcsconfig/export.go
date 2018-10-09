@@ -50,6 +50,7 @@ func (c *PCSConfig) BaiduUserList() BaiduUserList {
 	return c.baiduUserList
 }
 
+// HTTPClient 返回设置好的HTTPClient
 func (c *PCSConfig) HTTPClient() *requester.HTTPClient {
 	client := requester.NewHTTPClient()
 	client.SetHTTPSecure(c.enableHTTPS)
@@ -126,6 +127,7 @@ func (c *PCSConfig) PrintTable() {
 		[]string{"max_download_load", strconv.Itoa(c.maxDownloadLoad), "1 ~ 5", "同时进行下载文件的最大数量"},
 		[]string{"savedir", c.saveDir, "", "下载文件的储存目录"},
 		[]string{"webuser", c.webUsername, "", "web用户名"},
+		[]string{"webpassword", "[hidden]", "", "web用户名"},
 	})
 	tb.Render()
 }

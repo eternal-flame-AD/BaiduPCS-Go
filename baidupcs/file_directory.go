@@ -1,16 +1,16 @@
 package baidupcs
 
 import (
-	"fmt"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/converter"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/pcstime"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsverbose"
-	"github.com/json-iterator/go"
-	"github.com/olekukonko/tablewriter"
+	"errors"
 	"strconv"
 	"strings"
 	"unsafe"
+
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs/pcserror"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/converter"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/pcstime"
+	"github.com/olekukonko/tablewriter"
 )
 
 type (
@@ -34,20 +34,22 @@ const (
 )
 
 type (
-	// HandleFileDirectoryFunc 处理文件或目录的元信息
-	HandleFileDirectoryFunc func(depth int, fd *FileDirectory)
+	// HandleFileDirectoryFunc 处理文件或目录的元信息, 返回值控制是否退出递归
+	HandleFileDirectoryFunc func(depth int, fdPath string, fd *FileDirectory, pcsError pcserror.Error) bool
 
 	// FileDirectory 文件或目录的元信息
 	FileDirectory struct {
-		FsID        int64  // fs_id
-		Path        string // 路径
-		Filename    string // 文件名 或 目录名
-		Ctime       int64  // 创建日期
-		Mtime       int64  // 修改日期
-		MD5         string // md5 值
-		Size        int64  // 文件大小 (目录为0)
-		Isdir       bool   // 是否为目录
-		Ifhassubdir bool   // 是否含有子目录 (只对目录有效)
+		FsID     int64  // fs_id
+		AppID    int64  // app_id
+		Path     string // 路径
+		Filename string // 文件名 或 目录名
+		Ctime    int64  // 创建日期
+		Mtime    int64  // 修改日期
+		MD5      string // md5 值
+		BlockListJSON
+		Size        int64 // 文件大小 (目录为0)
+		Isdir       bool  // 是否为目录
+		Ifhassubdir bool  // 是否含有子目录 (只对目录有效)
 
 		Parent   *FileDirectory    // 父目录信息
 		Children FileDirectoryList // 子目录信息
@@ -58,15 +60,17 @@ type (
 
 	// fdJSON 用于解析远程JSON数据
 	fdJSON struct {
-		FsID           int64  `json:"fs_id"`           // fs_id
-		Path           string `json:"path"`            // 路径
-		Filename       string `json:"server_filename"` // 文件名 或 目录名
-		Ctime          int64  `json:"ctime"`           // 创建日期
-		Mtime          int64  `json:"mtime"`           // 修改日期
-		MD5            string `json:"md5"`             // md5 值
-		Size           int64  `json:"size"`            // 文件大小 (目录为0)
-		IsdirInt       int8   `json:"isdir"`
-		IfhassubdirInt int8   `json:"ifhassubdir"`
+		FsID     int64  `json:"fs_id"` // fs_id
+		AppID    int64  `json:"app_id"`
+		Path     string `json:"path"`            // 路径
+		Filename string `json:"server_filename"` // 文件名 或 目录名
+		Ctime    int64  `json:"ctime"`           // 创建日期
+		Mtime    int64  `json:"mtime"`           // 修改日期
+		MD5      string `json:"md5"`             // md5 值
+		BlockListJSON
+		Size           int64 `json:"size"` // 文件大小 (目录为0)
+		IsdirInt       int8  `json:"isdir"`
+		IfhassubdirInt int8  `json:"ifhassubdir"`
 
 		// 对齐
 		_ *fdJSON
@@ -74,12 +78,12 @@ type (
 	}
 
 	fdData struct {
-		*ErrInfo
+		*pcserror.PCSErrInfo
 		List []*FileDirectory
 	}
 
 	fdDataJSONExport struct {
-		*ErrInfo
+		*pcserror.PCSErrInfo
 		List []*fdJSON `json:"list"`
 	}
 
@@ -97,7 +101,7 @@ var DefaultOrderOptions = &OrderOptions{
 }
 
 // FilesDirectoriesMeta 获取单个文件/目录的元信息
-func (pcs *BaiduPCS) FilesDirectoriesMeta(path string) (data *FileDirectory, pcsError Error) {
+func (pcs *BaiduPCS) FilesDirectoriesMeta(path string) (data *FileDirectory, pcsError pcserror.Error) {
 	if path == "" {
 		path = "/"
 	}
@@ -109,10 +113,10 @@ func (pcs *BaiduPCS) FilesDirectoriesMeta(path string) (data *FileDirectory, pcs
 
 	// 返回了多条元信息
 	if len(fds) != 1 {
-		return nil, &ErrInfo{
-			operation: OperationFilesDirectoriesMeta,
-			errType:   ErrTypeOthers,
-			err:       fmt.Errorf("未知返回数据"),
+		return nil, &pcserror.PCSErrInfo{
+			Operation: OperationFilesDirectoriesMeta,
+			ErrType:   pcserror.ErrTypeOthers,
+			Err:       errors.New("未知返回数据"),
 		}
 	}
 
@@ -120,7 +124,7 @@ func (pcs *BaiduPCS) FilesDirectoriesMeta(path string) (data *FileDirectory, pcs
 }
 
 // FilesDirectoriesBatchMeta 获取多个文件/目录的元信息
-func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryList, pcsError Error) {
+func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryList, pcsError pcserror.Error) {
 	dataReadCloser, pcsError := pcs.PrepareFilesDirectoriesBatchMeta(paths...)
 	if pcsError != nil {
 		return nil, pcsError
@@ -128,33 +132,24 @@ func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirect
 
 	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(OperationFilesDirectoriesMeta)
+	errInfo := pcserror.NewPCSErrorInfo(OperationFilesDirectoriesMeta)
 	// 服务器返回数据进行处理
-	jsonData := &fdData{
-		ErrInfo: errInfo,
+	jsonData := fdData{
+		PCSErrInfo: errInfo,
 	}
 
-	d := jsoniter.NewDecoder(dataReadCloser)
-	err := d.Decode((*fdDataJSONExport)(unsafe.Pointer(jsonData)))
-	if err != nil {
-		errInfo.jsonError(err)
-		return nil, errInfo
-	}
-
-	// 错误处理
-	errCode, _ := jsonData.ErrInfo.FindErr()
-	if errCode != 0 {
-		return nil, jsonData.ErrInfo
+	pcsError = handleJSONParse(OperationFilesDirectoriesMeta, dataReadCloser, (*fdDataJSONExport)(unsafe.Pointer(&jsonData)))
+	if pcsError != nil {
+		return
 	}
 
 	// 结果处理
 	data = jsonData.List
-
 	return
 }
 
 // FilesDirectoriesList 获取目录下的文件和目录列表
-func (pcs *BaiduPCS) FilesDirectoriesList(path string, options *OrderOptions) (data FileDirectoryList, pcsError Error) {
+func (pcs *BaiduPCS) FilesDirectoriesList(path string, options *OrderOptions) (data FileDirectoryList, pcsError pcserror.Error) {
 	dataReadCloser, pcsError := pcs.PrepareFilesDirectoriesList(path, options)
 	if pcsError != nil {
 		return nil, pcsError
@@ -162,21 +157,13 @@ func (pcs *BaiduPCS) FilesDirectoriesList(path string, options *OrderOptions) (d
 
 	defer dataReadCloser.Close()
 
-	jsonData := &fdData{
-		ErrInfo: NewErrorInfo(OperationFilesDirectoriesList),
+	jsonData := fdData{
+		PCSErrInfo: pcserror.NewPCSErrorInfo(OperationFilesDirectoriesList),
 	}
 
-	d := jsoniter.NewDecoder(dataReadCloser)
-	err := d.Decode((*fdDataJSONExport)(unsafe.Pointer(jsonData)))
-	if err != nil {
-		jsonData.ErrInfo.jsonError(err)
-		return nil, jsonData.ErrInfo
-	}
-
-	// 错误处理
-	errCode, _ := jsonData.ErrInfo.FindErr()
-	if errCode != 0 {
-		return nil, jsonData.ErrInfo
+	pcsError = handleJSONParse(OperationFilesDirectoriesList, dataReadCloser, (*fdDataJSONExport)(unsafe.Pointer(&jsonData)))
+	if pcsError != nil {
+		return
 	}
 
 	// 可能是一个文件
@@ -198,30 +185,64 @@ func (pcs *BaiduPCS) FilesDirectoriesList(path string, options *OrderOptions) (d
 	return
 }
 
-func (pcs *BaiduPCS) recurseList(path string, depth int, options *OrderOptions, handleFileDirectoryFunc HandleFileDirectoryFunc) (data FileDirectoryList, pcsError Error) {
-	fdl, pcsError := pcs.FilesDirectoriesList(path, options)
+// Search 按文件名搜索文件, 不支持查找目录
+func (pcs *BaiduPCS) Search(targetPath, keyword string, recursive bool) (fdl FileDirectoryList, pcsError pcserror.Error) {
+	if targetPath == "" {
+		targetPath = "/"
+	}
+
+	dataReadCloser, pcsError := pcs.PrepareSearch(targetPath, keyword, recursive)
 	if pcsError != nil {
 		return nil, pcsError
 	}
 
+	defer dataReadCloser.Close()
+
+	errInfo := pcserror.NewPCSErrorInfo(OperationSearch)
+	jsonData := fdData{
+		PCSErrInfo: errInfo,
+	}
+
+	pcsError = handleJSONParse(OperationSearch, dataReadCloser, (*fdDataJSONExport)(unsafe.Pointer(&jsonData)))
+	if pcsError != nil {
+		return
+	}
+
+	// 结果处理
+	fdl = jsonData.List
+	return
+}
+
+func (pcs *BaiduPCS) recurseList(path string, depth int, options *OrderOptions, handleFileDirectoryFunc HandleFileDirectoryFunc) (fdl FileDirectoryList, ok bool) {
+	fdl, pcsError := pcs.FilesDirectoriesList(path, options)
+	if pcsError != nil {
+		ok := handleFileDirectoryFunc(depth, path, nil, pcsError)
+		return nil, ok
+	}
+
 	for k := range fdl {
-		handleFileDirectoryFunc(depth+1, fdl[k])
+		ok = handleFileDirectoryFunc(depth+1, fdl[k].Path, fdl[k], nil)
+		if !ok {
+			return
+		}
+
 		if !fdl[k].Isdir {
 			continue
 		}
 
-		fdl[k].Children, pcsError = pcs.recurseList(fdl[k].Path, depth+1, options, handleFileDirectoryFunc)
-		if pcsError != nil {
-			pcsverbose.Verboseln(pcsError)
+		fdl[k].Children, ok = pcs.recurseList(fdl[k].Path, depth+1, options, handleFileDirectoryFunc)
+		if !ok {
+			return
 		}
 	}
 
-	return fdl, nil
+	return fdl, true
 }
 
 // FilesDirectoriesRecurseList 递归获取目录下的文件和目录列表
-func (pcs *BaiduPCS) FilesDirectoriesRecurseList(path string, options *OrderOptions, handleFileDirectoryFunc HandleFileDirectoryFunc) (data FileDirectoryList, pcsError Error) {
-	return pcs.recurseList(path, 0, options, handleFileDirectoryFunc)
+func (pcs *BaiduPCS) FilesDirectoriesRecurseList(path string, options *OrderOptions, handleFileDirectoryFunc HandleFileDirectoryFunc) (data FileDirectoryList) {
+	data, _ = pcs.recurseList(path, 0, options, handleFileDirectoryFunc)
+	return data
 }
 
 func (f *FileDirectory) String() string {
@@ -236,15 +257,22 @@ func (f *FileDirectory) String() string {
 			[]string{"目录名称", f.Filename},
 		})
 	} else {
+		var md5info string
+		if len(f.BlockList) > 1 {
+			md5info = "md5 (可能不正确)"
+		} else {
+			md5info = "md5 (截图请打码)"
+		}
 		tb.AppendBulk([][]string{
 			[]string{"类型", "文件"},
 			[]string{"文件路径", f.Path},
 			[]string{"文件名称", f.Filename},
 			[]string{"文件大小", strconv.FormatInt(f.Size, 10) + ", " + converter.ConvertFileSize(f.Size)},
-			[]string{"md5 (截图请打码)", f.MD5},
+			[]string{md5info, f.MD5},
 		})
 	}
 
+	tb.Append([]string{"app_id", strconv.FormatInt(f.AppID, 10)})
 	tb.Append([]string{"fs_id", strconv.FormatInt(f.FsID, 10)})
 	tb.AppendBulk([][]string{
 		[]string{"创建日期", pcstime.FormatTime(f.Ctime)},

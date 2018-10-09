@@ -1,10 +1,21 @@
 package pcscommand
 
 import (
+	"container/list"
 	"fmt"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
 	"path"
 	"strings"
+
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs/pcserror"
+)
+
+type (
+	etask struct {
+		*ListTask
+		path string
+		err  pcserror.Error
+	}
 )
 
 // RunExport 执行导出文件和目录
@@ -15,7 +26,11 @@ func RunExport(pcspaths []string, rootPath string) {
 		return
 	}
 
-	pcs := GetBaiduPCS()
+	var (
+		pcs         = GetBaiduPCS()
+		invalidList = list.New()
+		failedList  = list.New()
+	)
 
 	for _, pcspath := range pcspaths {
 		getPath := func(p string) string {
@@ -31,8 +46,23 @@ func RunExport(pcspaths []string, rootPath string) {
 			return path.Join(rootPath, strings.TrimPrefix(p, pcspath))
 		}
 
-		var d int
-		pcs.FilesDirectoriesRecurseList(pcspath, baidupcs.DefaultOrderOptions, func(depth int, fd *baidupcs.FileDirectory) {
+		var (
+			d      int
+			cmdStr string
+		)
+		pcs.FilesDirectoriesRecurseList(pcspath, baidupcs.DefaultOrderOptions, func(depth int, fdPath string, fd *baidupcs.FileDirectory, pcsError pcserror.Error) bool {
+			if pcsError != nil {
+				pcsCommandVerbose.Warnf("%s\n", pcsError)
+				failedList.PushBack(&etask{
+					ListTask: &ListTask{
+						MaxRetry: DefaultDownloadMaxRetry,
+					},
+					path: fdPath,
+					err:  pcsError,
+				})
+				return true
+			}
+
 			if fd.Isdir {
 				if depth > d {
 					d = depth
@@ -40,10 +70,34 @@ func RunExport(pcspaths []string, rootPath string) {
 					fmt.Printf("BaiduPCS-Go mkdir \"%s\"\n", getPath(fd.Path))
 					d = 0
 				}
-				return
+				return true
 			}
 
-			fmt.Printf("BaiduPCS-Go rapidupload -length=%d -md5=%s \"%s\"\n", fd.Size, fd.MD5, getPath(fd.Path))
+			cmdStr = fmt.Sprintf("BaiduPCS-Go rapidupload -length=%d -md5=%s \"%s\"", fd.Size, fd.MD5, getPath(fd.Path))
+
+			if len(fd.BlockList) > 1 {
+				invalidList.PushBack(cmdStr)
+			} else {
+				fmt.Print(cmdStr + "\n")
+			}
+			return true
 		})
+	}
+
+	if failedList.Len() > 0 {
+		// 暂不重试
+		fmt.Printf("\n以下目录加载失败: \n")
+		fmt.Printf("%s\n", strings.Repeat("-", 100))
+		for e := failedList.Front(); e != nil; e = e.Next() {
+			fmt.Printf("%s\n", e.Value.(*etask).path)
+		}
+	}
+
+	if invalidList.Len() > 0 {
+		fmt.Printf("\n以下文件可能无法导出: \n")
+		fmt.Printf("%s\n", strings.Repeat("-", 100))
+		for e := invalidList.Front(); e != nil; e = e.Next() {
+			fmt.Printf("%s\n", e.Value.(string))
+		}
 	}
 }

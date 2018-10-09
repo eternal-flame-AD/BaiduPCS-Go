@@ -7,6 +7,13 @@
 
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
+## 解决错误代码4, No permission to do this operation
+```
+BaiduPCS-Go config set -appid 266719
+```
+
+详见讨论 [#387](https://github.com/iikira/BaiduPCS-Go/issues/387)
+
 ## 注意
 
 此文档只针对于最新的commit, 可能不适用于已发布的最新版本.
@@ -34,6 +41,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
   * [列出目录](#列出目录)
   * [列出目录树形图](#列出目录树形图)
   * [获取单个文件/目录的元信息](#获取单个文件目录的元信息)
+  * [搜索文件](#搜索文件)
   * [下载文件/目录](#下载文件目录)
   * [上传文件/目录](#上传文件目录)
   * [获取下载直链](#获取下载直链)
@@ -308,6 +316,28 @@ BaiduPCS-Go meta 我的资源
 BaiduPCS-Go meta /
 ```
 
+## 搜索文件
+
+按文件名搜索文件（不支持查找目录）。
+
+默认在当前工作目录搜索.
+
+```
+BaiduPCS-Go search [-path=<需要检索的目录>] [-r] <关键字>
+```
+
+#### 例子
+```
+# 搜索根目录的文件
+BaiduPCS-Go search -path=/ 关键字
+
+# 搜索当前工作目录的文件
+BaiduPCS-Go search 关键字
+
+# 递归搜索当前工作目录的文件
+BaiduPCS-Go search -r 关键字
+```
+
 ## 下载文件/目录
 ```
 BaiduPCS-Go download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...
@@ -356,13 +386,20 @@ BaiduPCS-Go upload <本地文件/目录的路径1> <文件/目录2> <文件/目�
 BaiduPCS-Go u <本地文件/目录的路径1> <文件/目录2> <文件/目录3> ... <目标目录>
 ```
 
-* 上传的文件将会保存到, <目标目录>.
+* 上传默认采用分片上传的方式, 上传的文件将会保存到, <目标目录>.
 
 * 遇到同名文件将会自动覆盖!!
 
 * 当上传的文件名和网盘的目录名称相同时, 不会覆盖目录, 防止丢失数据.
 
-* 注意: 在上传完成后的修复md5, 不一定能成功, 但文件本身是没问题的, 只是服务器记录的md5错误而已.
+
+#### 注意:
+
+* 分片上传之后, 服务器可能会记录到错误的文件md5, 程序会在上传完成后的修复md5, 修复md5不一定能成功, 但文件的完整性是没问题的.
+
+* 禁用分片上传可以保证服务器记录到正确的md5.
+
+* 禁用分片上传时只能使用单线程上传, 指定的单个文件上传最大线程数将会无效.
 
 #### 例子:
 ```
@@ -431,6 +468,10 @@ BaiduPCS-Go ep <文件/目录1> <文件/目录2> ...
 ```
 
 导出网盘内的文件或目录, 原理为秒传文件, 此操作会生成导出文件或目录的命令.
+
+#### 注意
+
+并不是所有的文件都能导出成功, 程序会列出无法导出的文件列表
 
 #### 例子:
 ```
@@ -548,6 +589,8 @@ BaiduPCS-Go od
 
 离线下载支持http/https/ftp/电驴/磁力链协议
 
+离线下载同时进行的任务数量有限, 超出限制的部分将无法添加.
+
 ### 添加离线下载任务
 ```
 BaiduPCS-Go offlinedl add -path=<离线下载文件保存的路径> 资源地址1 地址2 ...
@@ -573,6 +616,9 @@ BaiduPCS-Go offlinedl cancel 任务ID1 任务ID2 ...
 ### 删除离线下载任务
 ```
 BaiduPCS-Go offlinedl delete 任务ID1 任务ID2 ...
+
+# 清空离线下载任务记录, 程序不会进行二次确认, 谨慎操作!!!
+BaiduPCS-Go offlinedl delete -all
 ```
 
 #### 例子

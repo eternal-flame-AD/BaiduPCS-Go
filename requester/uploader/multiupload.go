@@ -12,7 +12,8 @@ import (
 type (
 	// MultiUpload 支持多线程的上传, 可用于断点续传
 	MultiUpload interface {
-		TmpFile(ctx context.Context, r rio.ReaderLen64) (checksum string, terr error)
+		Precreate() (perr error)
+		TmpFile(ctx context.Context, partseq int, partOffset int64, readerlen64 rio.ReaderLen64) (checksum string, terr error)
 		CreateSuperFile(checksumList ...string) (cerr error)
 	}
 
@@ -45,8 +46,6 @@ func NewMultiUploader(multiUpload MultiUpload, file rio.ReaderAtLen64) *MultiUpl
 	return &MultiUploader{
 		multiUpload: multiUpload,
 		file:        file,
-		blockSize:   1 * converter.GB,
-		parallel:    10,
 	}
 }
 
@@ -75,6 +74,12 @@ func (muer *MultiUploader) lazyInit() {
 	if muer.updateInstanceStateChan == nil {
 		muer.updateInstanceStateChan = make(chan struct{}, 1)
 	}
+	if muer.parallel <= 0 {
+		muer.parallel = 10
+	}
+	if muer.blockSize <= 0 {
+		muer.blockSize = 1 * converter.GB
+	}
 }
 
 func (muer *MultiUploader) check() {
@@ -95,40 +100,11 @@ func (muer *MultiUploader) Execute() {
 		muer.workers = instanceStateToWorkerList(muer.instanceState, muer.file)
 		uploaderVerbose.Infof("upload task CREATED from instance state\n")
 	} else {
-		fileSize := muer.file.Len()
-		blocksNum := int(fileSize / muer.blockSize)
-		if fileSize%muer.blockSize != 0 {
-			blocksNum += 1
-		}
+		muer.workers = instanceStateToWorkerList(&InstanceState{
+			BlockList: SplitBlock(muer.file.Len(), muer.blockSize),
+		}, muer.file)
 
-		muer.workers = make(workerList, 0, blocksNum)
-
-		var (
-			id, begin, end int64
-		)
-
-		for i := 0; i < blocksNum-1; i++ {
-			end += muer.blockSize
-			muer.workers = append(muer.workers, &worker{
-				id: id,
-				splitUnit: NewSplitUnit(muer.file, ReadRange{
-					Begin: begin,
-					End:   end,
-				}),
-			})
-			id++
-			begin = end
-		}
-
-		muer.workers = append(muer.workers, &worker{
-			id: id,
-			splitUnit: NewSplitUnit(muer.file, ReadRange{
-				Begin: begin,
-				End:   fileSize,
-			}),
-		})
-
-		uploaderVerbose.Infof("upload task CREATED: block size: %d, num: %d\n", muer.blockSize, blocksNum)
+		uploaderVerbose.Infof("upload task CREATED: block size: %d, num: %d\n", muer.blockSize, len(muer.workers))
 	}
 
 	// 开始上传
@@ -146,7 +122,7 @@ func (muer *MultiUploader) Execute() {
 				muer.onCancelEvent()
 			}
 		} else if muer.onErrorEvent != nil {
-			go muer.onErrorEvent(err)
+			muer.onErrorEvent(err)
 		}
 	} else {
 		pcsutil.TriggerOnSync(muer.onSuccessEvent)

@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs/pcserror"
+
 	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcspath"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/waitgroup"
@@ -71,7 +73,7 @@ func parsePath(path string) (paths []string, err error) {
 }
 
 // recurseParsePath 递归解析通配符
-func recurseParsePath(path string) (paths []string, err baidupcs.Error) {
+func recurseParsePath(path string) (paths []string, err pcserror.Error) {
 	if !patternRE.MatchString(path) {
 		// 检测路径是否存在
 		_, err = GetBaiduPCS().FilesDirectoriesMeta(path)

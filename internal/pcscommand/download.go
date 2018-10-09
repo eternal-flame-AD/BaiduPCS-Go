@@ -1,19 +1,11 @@
 package pcscommand
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsconfig"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/converter"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/waitgroup"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/requester/downloader"
-	"github.com/oleiade/lane"
 	"io"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -21,6 +13,17 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs/pcserror"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/checksum"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/converter"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcsutil/waitgroup"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/requester/downloader"
+	"github.com/oleiade/lane"
 )
 
 const (
@@ -28,30 +31,43 @@ const (
 	DownloadSuffix = ".BaiduPCS-Go-downloading"
 	//StrDownloadInitError 初始化下载发生错误
 	StrDownloadInitError = "初始化下载发生错误"
+	// DefaultDownloadMaxRetry 默认下载失败最大重试次数
+	DefaultDownloadMaxRetry = 3
 )
 
-// dtask 下载任务
-type dtask struct {
-	ListTask
-	path         string                  // 下载的路径
-	savePath     string                  // 保存的路径
-	downloadInfo *baidupcs.FileDirectory // 文件或目录详情
-}
+var (
+	// ErrNotSupportChecksum 文件不支持校验
+	ErrNotSupportChecksum = errors.New("该文件不支持校验")
+	// ErrChecksumFailed 文件校验失败
+	ErrChecksumFailed = errors.New("该文件校验失败, 文件md5值与服务器记录的不匹配")
+)
 
-//DownloadOptions 下载可选参数
-type DownloadOptions struct {
-	IsTest               bool
-	IsPrintStatus        bool
-	IsExecutedPermission bool
-	IsOverwrite          bool
-	IsShareDownload      bool
-	IsLocateDownload     bool
-	IsStreaming          bool
-	SaveTo               string
-	Parallel             int
-	Load                 int
-	Out                  io.Writer
-}
+type (
+	// dtask 下载任务
+	dtask struct {
+		ListTask
+		path         string                  // 下载的路径
+		savePath     string                  // 保存的路径
+		downloadInfo *baidupcs.FileDirectory // 文件或目录详情
+	}
+
+	//DownloadOptions 下载可选参数
+	DownloadOptions struct {
+		IsTest               bool
+		IsPrintStatus        bool
+		IsExecutedPermission bool
+		IsOverwrite          bool
+		IsShareDownload      bool
+		IsLocateDownload     bool
+		IsStreaming          bool
+		SaveTo               string
+		Parallel             int
+		Load                 int
+		MaxRetry             int
+		NoCheck              bool
+		Out                  io.Writer
+	}
+)
 
 func downloadPrintFormat(load int) string {
 	if load <= 1 {
@@ -185,6 +201,27 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 	return nil
 }
 
+// checkFileValid 检测文件有效性
+func checkFileValid(filePath string, fileInfo *baidupcs.FileDirectory) error {
+	if len(fileInfo.BlockList) != 1 {
+		return ErrNotSupportChecksum
+	}
+
+	f := checksum.NewLocalFileInfo(filePath, int(256*converter.KB))
+	err := f.OpenPath()
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	f.Md5Sum()
+	if strings.Compare(hex.EncodeToString(f.MD5), fileInfo.MD5) != 0 {
+		return ErrChecksumFailed
+	}
+	return nil
+}
+
 // RunDownload 执行下载网盘内文件
 func RunDownload(paths []string, options *DownloadOptions) {
 	if options == nil {
@@ -195,8 +232,12 @@ func RunDownload(paths []string, options *DownloadOptions) {
 		options.Out = os.Stdout
 	}
 
-	if options.Load < 1 {
+	if options.Load <= 0 {
 		options.Load = pcsconfig.Config.MaxDownloadLoad()
+	}
+
+	if options.MaxRetry < 0 {
+		options.MaxRetry = DefaultDownloadMaxRetry
 	}
 
 	// 设置下载配置
@@ -210,8 +251,6 @@ func RunDownload(paths []string, options *DownloadOptions) {
 		options.Parallel = pcsconfig.Config.MaxParallel()
 	}
 
-	cfg.MaxParallel = pcsconfig.AverageParallel(options.Parallel, options.Load)
-
 	paths, err := getAllAbsPaths(paths...)
 	if err != nil {
 		fmt.Println(err)
@@ -219,20 +258,53 @@ func RunDownload(paths []string, options *DownloadOptions) {
 	}
 
 	fmt.Fprintf(options.Out, "\n")
-	fmt.Fprintf(options.Out, "[0] 提示: 当前下载最大并发量为: %d, 下载缓存为: %d\n", cfg.MaxParallel, cfg.CacheSize)
+	fmt.Fprintf(options.Out, "[0] 提示: 当前下载最大并发量为: %d, 下载缓存为: %d\n", options.Parallel, cfg.CacheSize)
 
 	var (
-		pcs    = GetBaiduPCS()
-		dlist  = lane.NewDeque()
-		lastID = 0
+		pcs       = GetBaiduPCS()
+		dlist     = lane.NewDeque()
+		lastID    = 0
+		loadCount = 0
 	)
 
+	// 预测要下载的文件数量
+	// TODO: pcscache
+	for k := range paths {
+		pcs.FilesDirectoriesRecurseList(paths[k], baidupcs.DefaultOrderOptions, func(depth int, _ string, fd *baidupcs.FileDirectory, pcsError pcserror.Error) bool {
+			if pcsError != nil {
+				pcsCommandVerbose.Warnf("%s\n", pcsError)
+				return true
+			}
+
+			if !fd.Isdir {
+				loadCount++
+				if loadCount >= options.Load {
+					return false
+				}
+			}
+			return true
+		})
+
+		if loadCount >= options.Load {
+			break
+		}
+	}
+	// 修改Load, 设置MaxParallel
+	if loadCount > 0 {
+		options.Load = loadCount
+		// 取平均值
+		cfg.MaxParallel = pcsconfig.AverageParallel(options.Parallel, loadCount)
+	} else {
+		cfg.MaxParallel = options.Parallel
+	}
+
+	// 处理队列
 	for k := range paths {
 		lastID++
 		ptask := &dtask{
 			ListTask: ListTask{
 				ID:       lastID,
-				MaxRetry: 3,
+				MaxRetry: options.MaxRetry,
 			},
 			path: paths[k],
 		}
@@ -259,21 +331,35 @@ func RunDownload(paths []string, options *DownloadOptions) {
 
 			// 不重试的情况
 			switch {
+			case err == ErrNotSupportChecksum:
+				fallthrough
 			case strings.Compare(errManifest, "下载文件错误") == 0 && strings.Contains(err.Error(), StrDownloadInitError):
 				fmt.Fprintf(options.Out, "[%d] %s, %s\n", task.ID, errManifest, err)
 				return
 			}
 
-			fmt.Fprintf(options.Out, "[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, err, task.retry, task.MaxRetry)
-
 			// 未达到失败重试最大次数, 将任务推送到队列末尾
 			if task.retry < task.MaxRetry {
 				task.retry++
+				fmt.Fprintf(options.Out, "[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, err, task.retry, task.MaxRetry)
 				dlist.Append(task)
+				time.Sleep(3 * time.Duration(task.retry) * time.Second)
 			} else {
 				failedList = append(failedList, task.path)
 			}
-			time.Sleep(3 * time.Duration(task.retry) * time.Second)
+
+			switch err {
+			case ErrChecksumFailed:
+				// 删去旧的文件, 重新下载
+				rerr := os.Remove(task.savePath)
+				if rerr != nil {
+					fmt.Fprintf(options.Out, "[%d] 删除校验失败的文件出错, %s\n", task.ID, rerr)
+					failedList = append(failedList, task.path)
+					return
+				}
+
+				fmt.Fprintf(options.Out, "[%d] 已删除校验失败的文件\n", task.ID)
+			}
 		}
 		startTime = time.Now()
 		wg        = waitgroup.NewWaitGroup(options.Load)
@@ -325,7 +411,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 					subTask := &dtask{
 						ListTask: ListTask{
 							ID:       lastID,
-							MaxRetry: 3,
+							MaxRetry: options.MaxRetry,
 						},
 						path:         fileList[k].Path,
 						downloadInfo: fileList[k],
@@ -396,7 +482,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				client.SetKeepAlive(true)
 				err = download(task.ID, dlink, task.savePath, dlinks, client, *cfg, options)
 			} else {
-				dfunc := func(downloadURL string, jar *cookiejar.Jar) error {
+				dfunc := func(downloadURL string, jar http.CookieJar) error {
 					h := pcsconfig.Config.HTTPClient()
 					h.SetCookiejar(jar)
 					h.SetKeepAlive(true)
@@ -419,6 +505,19 @@ func RunDownload(paths []string, options *DownloadOptions) {
 			if err != nil {
 				handleTaskErr(task, "下载文件错误", err)
 				return
+			}
+
+			if !cfg.IsTest && !options.NoCheck {
+				if task.downloadInfo.Size >= 128*converter.MB {
+					fmt.Fprintf(options.Out, "[%d] 开始检验文件有效性, 稍后...\n", task.ID)
+				}
+				err = checkFileValid(task.savePath, task.downloadInfo)
+				if err != nil {
+					handleTaskErr(task, "检验文件有效性出错", err)
+					return
+				}
+
+				fmt.Fprintf(options.Out, "[%d] 检验文件有效性成功\n", task.ID)
 			}
 
 			atomic.AddInt64(&totalSize, task.downloadInfo.Size)
@@ -463,6 +562,8 @@ func RunLocateDownload(pcspaths ...string) {
 		tb.Render()
 		fmt.Println()
 	}
+
+	fmt.Printf("提示: 访问下载链接, 需将下载器的 User-Agent 设置为: %s\n", pcsconfig.Config.UserAgent())
 }
 
 func getDownloadLinks(pcspath string) (dlinks []*url.URL) {

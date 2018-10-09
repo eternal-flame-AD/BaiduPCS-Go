@@ -13,3 +13,10 @@ func eraseScreen(s *liner.State)
 func (pl *PCSLiner) ClearScreen() {
 	eraseScreen(pl.State)
 }
+
+// ClearScreen 清空屏幕
+func ClearScreen() {
+	liner := NewLiner()
+	liner.ClearScreen()
+	liner.Close()
+}

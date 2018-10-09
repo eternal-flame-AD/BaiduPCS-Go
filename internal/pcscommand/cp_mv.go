@@ -2,9 +2,11 @@ package pcscommand
 
 import (
 	"fmt"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
-	"github.com/eternal-flame-AD/BaiduPCS-Go/pcspath"
 	"path"
+
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/baidupcs/pcserror"
+	"github.com/eternal-flame-AD/BaiduPCS-Go/pcspath"
 )
 
 // RunCopy 执行 批量拷贝文件/目录
@@ -55,7 +57,7 @@ func runCpMvOp(op string, paths ...string) {
 	switch {
 	case toInfo != nil && toInfo.Path != to:
 		fallthrough
-	case pcsError != nil && pcsError.ErrorType() == baidupcs.ErrTypeRemoteError:
+	case pcsError != nil && pcsError.GetErrType() == pcserror.ErrTypeRemoteError:
 		// 判断路径是否存在
 		// 如果不存在, 则为重命名或同目录拷贝操作
 
@@ -90,7 +92,7 @@ func runCpMvOp(op string, paths ...string) {
 			fmt.Printf("%s -> %s\n", froms[0], to)
 		}
 		return
-	case pcsError != nil && pcsError.ErrorType() != baidupcs.ErrTypeRemoteError:
+	case pcsError != nil && pcsError.GetErrType() != pcserror.ErrTypeRemoteError:
 		fmt.Println(pcsError)
 		return
 	}

@@ -38,7 +38,7 @@ import (
 
 var (
 	// Version 版本号
-	Version = "v3.5.3-devel"
+	Version = "v3.5.6-devel"
 
 	historyFilePath = filepath.Join(pcsconfig.GetConfigDir(), "pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -95,7 +95,6 @@ func init() {
 func main() {
 	defer pcsconfig.Config.Close()
 
-	line := pcsliner.NewLiner()
 	app := cli.NewApp()
 	app.Name = "BaiduPCS-Go"
 	app.Version = Version
@@ -136,7 +135,8 @@ func main() {
 		pcsverbose.Verbosef("VERBOSE: 这是一条调试信息\n\n")
 
 		var (
-			err error
+			line = pcsliner.NewLiner()
+			err  error
 		)
 
 		line.History, err = pcsliner.NewLineHistory(historyFilePath)
@@ -756,6 +756,57 @@ func main() {
 			},
 		},
 		{
+			Name:      "search",
+			Aliases:   []string{"s"},
+			Usage:     "搜索文件",
+			UsageText: app.Name + " search [-path=<需要检索的目录>] [-r] 关键字",
+			Description: `
+	按文件名搜索文件（不支持查找目录）。
+	默认在当前工作目录搜索.
+
+	示例:
+
+	搜索根目录的文件
+	BaiduPCS-Go search -path=/ 关键字
+
+	搜索当前工作目录的文件
+	BaiduPCS-Go search 关键字
+
+	递归搜索当前工作目录的文件
+	BaiduPCS-Go search -r 关键字
+`,
+			Category: "百度网盘",
+			Before:   reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() < 1 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				pcscommand.RunSearch(c.String("path"), c.Args().Get(0), &pcscommand.SearchOptions{
+					Total:   c.Bool("l"),
+					Recurse: c.Bool("r"),
+				})
+
+				return nil
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "l",
+					Usage: "详细显示",
+				},
+				cli.BoolFlag{
+					Name:  "r",
+					Usage: "递归搜索",
+				},
+				cli.StringFlag{
+					Name:  "path",
+					Usage: "需要检索的目录",
+					Value: ".",
+				},
+			},
+		},
+		{
 			Name:      "tree",
 			Aliases:   []string{"t"},
 			Usage:     "列出目录的树形图",
@@ -909,6 +960,7 @@ func main() {
 	通过 BaiduPCS-Go config set -savedir <savedir>, 自定义保存的目录.
 	已支持目录下载.
 	已支持多个文件或目录下载.
+	已支持下载完成后自动校验文件, 但并不是所有的文件都支持校验!
 	自动跳过下载重名的文件!
 
 	示例:
@@ -958,6 +1010,8 @@ func main() {
 					SaveTo:               saveTo,
 					Parallel:             c.Int("p"),
 					Load:                 c.Int("l"),
+					MaxRetry:             c.Int("retry"),
+					NoCheck:              c.Bool("nocheck"),
 				}
 
 				if c.Bool("bg") && isCli {
@@ -1013,6 +1067,15 @@ func main() {
 					Name:  "l",
 					Usage: "指定同时进行下载文件的数量",
 				},
+				cli.IntFlag{
+					Name:  "retry",
+					Usage: "下载失败最大重试次数",
+					Value: pcscommand.DefaultDownloadMaxRetry,
+				},
+				cli.BoolFlag{
+					Name:  "nocheck",
+					Usage: "下载文件完成后不校验文件",
+				},
 				cli.BoolFlag{
 					Name:  "bg",
 					Usage: "加入后台下载",
@@ -1054,11 +1117,15 @@ func main() {
 			Usage:     "上传文件/目录",
 			UsageText: app.Name + " upload <本地文件/目录的路径1> <文件/目录2> <文件/目录3> ... <目标目录>",
 			Description: `
-	上传的文件将会保存到, <目标目录>.
+	上传默认采用分片上传的方式, 上传的文件将会保存到, <目标目录>.
 	遇到同名文件将会自动覆盖!!
 	当上传的文件名和网盘的目录名称相同时, 不会覆盖目录, 防止丢失数据.
 
-	注意: 在上传完成后的修复md5, 不一定能成功, 但文件本身是没问题的, 只是服务器记录的md5错误而已.
+	注意: 
+
+	分片上传之后, 服务器可能会记录到错误的文件md5, 程序会在上传完成后的修复md5, 修复md5不一定能成功, 但文件的完整性是没问题的.
+	禁用分片上传可以保证服务器记录到正确的md5.
+	禁用分片上传时只能使用单线程上传, 指定的单个文件上传最大线程数将会无效.
 
 	示例:
 
@@ -1086,19 +1153,35 @@ func main() {
 				subArgs := c.Args()
 
 				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1], &pcscommand.UploadOptions{
+					Parallel:       c.Int("p"),
+					MaxRetry:       c.Int("retry"),
 					NotRapidUpload: c.Bool("norapid"),
-					NoFixMD5:       c.Bool("nofix"),
+					NotFixMD5:      c.Bool("nofix"),
+					NotSplitFile:   c.Bool("nosplit"),
 				})
 				return nil
 			},
 			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:  "p",
+					Usage: "指定单个文件上传的最大线程数",
+				},
+				cli.IntFlag{
+					Name:  "retry",
+					Usage: "上传失败最大重试次数",
+					Value: pcscommand.DefaultUploadMaxRetry,
+				},
 				cli.BoolFlag{
 					Name:  "norapid",
 					Usage: "不检测秒传",
 				},
 				cli.BoolFlag{
 					Name:  "nofix",
-					Usage: "在上传完成后不修复md5, 不一定能成功",
+					Usage: "在上传完成后不修复md5",
+				},
+				cli.BoolFlag{
+					Name:  "nosplit",
+					Usage: "禁用分片上传",
 				},
 			},
 		},
@@ -1324,6 +1407,9 @@ func main() {
 			Description: `
 	导出网盘内的文件或目录, 原理为秒传文件, 此操作会生成导出文件或目录的命令.
 
+	注意!!! :
+	并不是所有的文件都能导出成功, 程序会列出无法导出的文件列表
+
 	示例:
 
 	导出当前工作目录:
@@ -1358,6 +1444,7 @@ func main() {
 			Aliases: []string{"clouddl", "od"},
 			Usage:   "离线下载",
 			Description: `支持http/https/ftp/电驴/磁力链协议
+	离线下载同时进行的任务数量有限, 超出限制的部分将无法添加.
 
 	示例:
 
@@ -1462,13 +1549,20 @@ func main() {
 					Usage:     "删除离线下载任务",
 					UsageText: app.Name + " offlinedl delete 任务ID1 任务ID2 ...",
 					Action: func(c *cli.Context) error {
-						if c.NArg() < 1 {
+						isClear := c.Bool("all")
+						if c.NArg() < 1 && !isClear {
 							cli.ShowCommandHelp(c, c.Command.Name)
 							return nil
 						}
 
-						taskIDs := converter.SliceStringToInt64(c.Args())
+						// 清空离线下载任务记录
+						if isClear {
+							pcscommand.RunCloudDlClearTask()
+							return nil
+						}
 
+						// 删除特定的离线下载任务记录
+						taskIDs := converter.SliceStringToInt64(c.Args())
 						if len(taskIDs) == 0 {
 							fmt.Printf("未找到合法的任务ID, task_id\n")
 							return nil
@@ -1476,6 +1570,12 @@ func main() {
 
 						pcscommand.RunCloudDlDeleteTask(taskIDs)
 						return nil
+					},
+					Flags: []cli.Flag{
+						cli.BoolFlag{
+							Name:  "all",
+							Usage: "清空离线下载任务记录, 程序不会进行二次确认, 谨慎操作!!!",
+						},
 					},
 				},
 			},
@@ -1501,7 +1601,7 @@ func main() {
 	例子:
 		BaiduPCS-Go config set -appid=260149
 		BaiduPCS-Go config set -enable_https=false
-		BaiduPCS-Go config set -user_agent="chrome"
+		BaiduPCS-Go config set -user_agent="netdisk;1.0"
 		BaiduPCS-Go config set -cache_size 16384 -max_parallel 200 -savedir D:/download`,
 					Action: func(c *cli.Context) error {
 						if c.NumFlags() <= 0 || c.NArg() > 0 {
@@ -1562,12 +1662,12 @@ func main() {
 							Usage: "浏览器标识",
 						},
 						cli.IntFlag{
-							Name:  "cache_size",
-							Usage: "下载缓存",
+							Name:  "max_parallel",
+							Usage: "上传/下载网络连接的最大并发量",
 						},
 						cli.IntFlag{
-							Name:  "max_parallel",
-							Usage: "下载最大并发量",
+							Name:  "cache_size",
+							Usage: "下载缓存",
 						},
 						cli.IntFlag{
 							Name:  "max_download_load",
@@ -1715,7 +1815,7 @@ func main() {
 			Description: "清空控制台屏幕",
 			Category:    "其他",
 			Action: func(c *cli.Context) error {
-				line.ClearScreen()
+				pcsliner.ClearScreen()
 				return nil
 			},
 		},

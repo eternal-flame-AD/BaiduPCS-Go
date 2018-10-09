@@ -49,9 +49,12 @@ func NewUploadingDatabase() (ud *UploadingDatabase, err error) {
 	}
 
 	d := jsoniter.NewDecoder(file)
-
 	err = d.Decode(ud)
-	return ud, err
+	if err != nil {
+		return nil, err
+	}
+
+	return ud, nil
 }
 
 // Save 保存内容
@@ -107,6 +110,10 @@ func (ud *UploadingDatabase) UpdateUploading(meta *checksum.LocalFileMeta, state
 	})
 }
 
+func (ud *UploadingDatabase) deleteIndex(k int) {
+	ud.UploadingList = append(ud.UploadingList[:k], ud.UploadingList[k+1:]...)
+}
+
 // Delete 删除
 func (ud *UploadingDatabase) Delete(meta *checksum.LocalFileMeta) bool {
 	if meta == nil {
@@ -119,7 +126,7 @@ func (ud *UploadingDatabase) Delete(meta *checksum.LocalFileMeta) bool {
 			continue
 		}
 		if uploading.LocalFileMeta.EqualLengthMD5(meta) || strings.Compare(uploading.LocalFileMeta.Path, meta.Path) == 0 {
-			ud.UploadingList = append(ud.UploadingList[:k], ud.UploadingList[k+1:]...)
+			ud.deleteIndex(k)
 			return true
 		}
 	}
@@ -133,6 +140,7 @@ func (ud *UploadingDatabase) Search(meta *checksum.LocalFileMeta) *uploader.Inst
 	}
 
 	meta.CompleteAbsPath()
+	ud.clearModTimeChange()
 	for _, uploading := range ud.UploadingList {
 		if uploading.LocalFileMeta == nil {
 			continue
@@ -155,6 +163,30 @@ func (ud *UploadingDatabase) Search(meta *checksum.LocalFileMeta) *uploader.Inst
 		}
 	}
 	return nil
+}
+
+func (ud *UploadingDatabase) clearModTimeChange() {
+	for i := 0; i < len(ud.UploadingList); i++ {
+		uploading := ud.UploadingList[i]
+		if uploading.LocalFileMeta == nil {
+			continue
+		}
+
+		info, err := os.Stat(uploading.LocalFileMeta.Path)
+		if err != nil {
+			ud.deleteIndex(i)
+			i--
+			pcsUploadVerbose.Warnf("clear invalid file path: %s, err: %s\n", uploading.LocalFileMeta.Path, err)
+			continue
+		}
+
+		if uploading.LocalFileMeta.ModTime != info.ModTime().Unix() {
+			ud.deleteIndex(i)
+			i--
+			pcsUploadVerbose.Infof("clear modified file path: %s\n", uploading.LocalFileMeta.Path)
+			continue
+		}
+	}
 }
 
 // Close 关闭数据库

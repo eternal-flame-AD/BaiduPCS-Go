@@ -23,6 +23,7 @@ type (
 		SliceMD5 []byte `json:"slicemd5"` // 文件前 requiredSliceLen (256KB) 切片的 md5 值
 		MD5      []byte `json:"md5"`      // 文件的 md5
 		CRC32    uint32 `json:"crc32"`    // 文件的 crc32
+		ModTime  int64  `json:"modtime"`  // 修改日期
 	}
 
 	// LocalFileInfo LocalFile
@@ -52,7 +53,7 @@ func NewLocalFileInfo(localPath string, bufSize int) *LocalFile {
 }
 
 // OpenPath 检查文件状态并获取文件的大小 (Length)
-func (lf *LocalFile) OpenPath() bool {
+func (lf *LocalFile) OpenPath() error {
 	if lf.File != nil {
 		lf.File.Close()
 	}
@@ -60,12 +61,17 @@ func (lf *LocalFile) OpenPath() bool {
 	var err error
 	lf.File, err = os.Open(lf.Path)
 	if err != nil {
-		return false
+		return err
 	}
 
-	info, _ := lf.File.Stat()
+	info, err := lf.File.Stat()
+	if err != nil {
+		return err
+	}
+
 	lf.Length = info.Size()
-	return true
+	lf.ModTime = info.ModTime().Unix()
+	return nil
 }
 
 // Close 关闭文件

@@ -19,7 +19,7 @@ import (
 	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/requester/downloader"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/requester/rio"
-	"github.com/iikira/baidu-tools/pan"
+	"github.com/eternal-flame-AD/baidu-tools/pan"
 )
 
 const (

@@ -12,7 +12,7 @@ import (
 	"github.com/eternal-flame-AD/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/pcstable"
 	"github.com/eternal-flame-AD/BaiduPCS-Go/requester"
-	"github.com/iikira/baidu-tools/pan"
+	"github.com/eternal-flame-AD/baidu-tools/pan"
 )
 
 // RunShareSet 执行分享
@@ -139,6 +139,7 @@ func getLink(shareID int64, shareLink, passwd, rootSharePath, filePath string) (
 
 	uk, pcsError := GetBaiduPCS().UK()
 	if pcsError != nil {
+		// 获取UK失败, 从分享链接获取信息
 		pcsCommandVerbose.Warn(pcsError.Error())
 		err := sInfo.InitInfo()
 		if err != nil {

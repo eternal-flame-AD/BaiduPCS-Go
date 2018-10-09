@@ -64,6 +64,15 @@ func IntToBool(i int) bool {
 	return i != 0
 }
 
+// SliceInt64ToString []int64 转换为 []string
+func SliceInt64ToString(si []int64) (ss []string) {
+	ss = make([]string, 0, len(si))
+	for k := range si {
+		ss = append(ss, strconv.FormatInt(si[k], 10))
+	}
+	return ss
+}
+
 // SliceStringToInt64 []string 转换为 []int64
 func SliceStringToInt64(ss []string) (si []int64) {
 	si = make([]int64, 0, len(ss))
@@ -73,6 +82,23 @@ func SliceStringToInt64(ss []string) (si []int64) {
 	)
 	for k := range ss {
 		i, err = strconv.ParseInt(ss[k], 10, 64)
+		if err != nil {
+			continue
+		}
+		si = append(si, i)
+	}
+	return
+}
+
+// SliceStringToInt []string 转换为 []int
+func SliceStringToInt(ss []string) (si []int) {
+	si = make([]int, 0, len(ss))
+	var (
+		i   int
+		err error
+	)
+	for k := range ss {
+		i, err = strconv.Atoi(ss[k])
 		if err != nil {
 			continue
 		}
